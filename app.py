@@ -10,7 +10,7 @@ import os
 
 app = Flask(__name__)
 
-# Configuración para producción (Render.com, etc.)
+
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'tu_clave_secreta_muy_larga_y_segura_12345!@#'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -407,10 +407,9 @@ def solve():
         return jsonify({"success": False, "error": str(e)})
 
 
-# Crear tablas al iniciar
 with app.app_context():
     db.create_all()
 
-# Para ejecutar en local
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
