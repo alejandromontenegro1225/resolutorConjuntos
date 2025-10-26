@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head><title>Registro</title></head>
+<body>
+  <h2>Registrarse</h2>
+  {% if error %}<p style="color:red;">{{ error }}</p>{% endif %}
+  <form method="POST">
+    Usuario: <input type="text" name="username" required><br><br>
+    Correo: <input type="email" name="email" required><br><br>
+    Contraseña: <input type="password" name="password" required><br><br>
+    <button type="submit">Registrarse</button>
+  </form>
+  <p><a href="/login">¿Ya tienes cuenta? Inicia sesión</a></p>
+</body>
+</html>

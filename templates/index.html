@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Resolutor de Conjuntos</title>
+  <style>
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: rgba(39,32,21,0.89); color:#333; margin:0; padding:0; line-height:1.6; }
+    header {
+      text-align:center;
+      padding:2.2rem 1.5rem;
+      background:white;
+      margin:1.8rem auto 2rem;
+      max-width:900px;
+      border-radius:16px;
+      box-shadow:0 4px 12px rgba(229,57,53,0.1);
+      position: relative;
+    }
+    #authButton {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: #e53935;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      text-decoration: none;
+      display: inline-block;
+    }
+    #authButton:hover { background: #d32f2f; }
+    header h1 { font-size:2.2rem; color:#e53935; margin-bottom:0.6rem;}
+    .container { max-width:900px; margin:0 auto; padding:0 1.5rem; display:grid; gap:1.8rem;}
+    .card { background:white; padding:1.8rem; border-radius:16px; box-shadow:0 6px 18px rgba(229,57,53,0.08);}
+    h2 { color:#e53935; margin-bottom:1.2rem; font-size:1.5rem;}
+    textarea, input[type="text"] { width:95%; padding:1rem; border:2px solid #ffe0e0; border-radius:12px; font-size:1rem; font-family:inherit; background:#fffdfa;}
+    textarea { height:100px; resize:vertical;}
+    .input-group { display:flex; gap:1rem; margin:1rem 0;}
+    button { background:#e53935; color:white; border:none; padding:0.9rem 1.6rem; border-radius:12px; font-size:1.05rem; cursor:pointer; font-weight:600; transition:background 0.2s;}
+    button:hover { background:#d32f2f;}
+    .hint { font-size:0.95rem; color:#666; margin-top:0.7rem;}
+    .hint code { background:#fff5f5; padding:0.2rem 0.4rem; border-radius:4px; font-family:monospace; color:#e53935;}
+    #vennDiagram {
+      background:#fff5f5;
+      border-radius:14px;
+      padding:1rem;
+      min-height:420px;
+      border:1px solid #ffd5d5;
+    }
+    #svgContainer {
+      text-align: center;
+    }
+    #svgContainer svg {
+      max-width: 100%;
+      height: auto;
+      display: inline-block;
+    }
+    #result { display:block; text-align:center; font-size:1.2rem; color:#b71c1c; font-weight:bold; margin-top:1rem; font-family:monospace;}
+    @media (max-width:650px){
+      .input-group { flex-direction:column;}
+      header{ margin:1rem auto 1.6rem;}
+      #authButton { top: 12px; right: 12px; padding: 4px 10px; font-size: 0.85rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    {% if logged_in %}
+      <a href="/logout" id="authButton">Cerrar sesión</a>
+    {% else %}
+      <a href="/login" id="authButton">Iniciar sesión</a>
+    {% endif %}
+
+    <h1>Resolutor de Conjuntos</h1>
+    <p>Define tus conjuntos y resuelve operaciones: unión, intersección, diferencia y diferencia simétrica.</p>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>Define tus conjuntos</h2>
+      <textarea id="setsInput" placeholder="Ejemplo:
+A = 1, 2, 3
+B = 3, 4, 5
+C = 5, 6
+U = 1,2,3,4,5,6,7,8"></textarea>
+      <p class="hint">Formato: <code>Nombre = elem1, elem2, ...</code>. Soporta A, B, C, D, E, F</p>
+    </div>
+
+    <div class="card">
+      <h2>Ecuación de conjuntos</h2>
+      <div class="input-group">
+        <input type="text" id="equationInput" placeholder="(A ∪ B) \ C" />
+        <button id="solveBtn">Resolver</button>
+      </div>
+      <p class="hint">
+        Operaciones avanzadas:
+        <code>∪</code> unión,
+        <code>∩</code> intersección,
+        <code>\</code> diferencia,
+        <code>Δ</code> diferencia simétrica,
+        <code>'</code> complemento,
+        <code>P(A)</code> conjunto potencia,
+        <code>A×B</code> producto cartesiano
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Resultado y Visualización</h2>
+      <div id="vennDiagram">
+        <div id="svgContainer">
+          <p style="color:#666;">Diagrama aparecerá aquí después de resolver.</p>
+        </div>
+      </div>
+      <span id="result">—</span>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const setsInput = document.getElementById('setsInput');
+      const equationInput = document.getElementById('equationInput');
+      const solveBtn = document.getElementById('solveBtn');
+      const result = document.getElementById('result');
+
+      {% if logged_in %}
+        setsInput.value = "A = 1, 2, 3\nB = 3, 4, 5\nC = 5, 6\nU = 1,2,3,4,5,6,7,8";
+        equationInput.value = "(A ∪ B) \\ C";
+      {% else %}
+        solveBtn.disabled = true;
+        solveBtn.title = "Debes iniciar sesión para resolver";
+        solveBtn.style.opacity = "0.6";
+        solveBtn.style.cursor = "not-allowed";
+      {% endif %}
+
+      solveBtn.addEventListener('click', async function() {
+        await solveEquation();
+      });
+
+      equationInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          solveEquation();
+        }
+      });
+
+      async function solveEquation() {
+        try {
+          const sets = setsInput.value.trim();
+          const equation = equationInput.value.trim();
+          if (!sets) throw new Error('Por favor, define algunos conjuntos');
+          if (!equation) throw new Error('Por favor, ingresa una ecuación');
+
+          result.textContent = "Calculando...";
+          solveBtn.disabled = true;
+
+          const response = await fetch('/solve', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ sets, equation })
+          });
+
+          const data = await response.json();
+          if (data.success) {
+            const resultData = data.results[0];
+            let resultText;
+            if (resultData.type === 'powerset') {
+              resultText = resultData.cardinality > 8
+                ? `Conjunto Potencia: ${resultData.cardinality} subconjuntos`
+                : `P = {${resultData.elements.join(', ')}}`;
+            } else if (resultData.type === 'cartesian') {
+              resultText = resultData.cardinality > 8
+                ? `Producto Cartesiano: ${resultData.cardinality} pares`
+                : `× = {${resultData.elements.join(', ')}}`;
+            } else {
+              resultText = `{${resultData.result.join(', ')}}`;
+            }
+            result.textContent = resultText;
+            document.getElementById('svgContainer').innerHTML =
+              data.svg_diagram || '<p style="color:#e53935;">Diagrama no disponible</p>';
+          } else {
+            throw new Error(data.error);
+          }
+        } catch (error) {
+          result.textContent = `Error: ${error.message}`;
+          document.getElementById('svgContainer').innerHTML =
+            '<p style="color:#e53935; text-align:center;">Error al generar el diagrama</p>';
+        } finally {
+          solveBtn.disabled = false;
+        }
+      }
+    });
+  </script>
+</body>
+</html>
